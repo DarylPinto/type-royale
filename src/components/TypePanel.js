@@ -4,8 +4,15 @@ import 'components/TypePanel.sass';
 import secToTime from 'assets/util/sec-to-time.js';
 import clone from 'assets/util/clone.js';
 
+///////////////
+// CONSTANTS //
+///////////////
+
+// How many seconds the game lasts
+const GAME_DURATION = 60;
+
 // Sample words that will come from an API later
-const dictionary = [
+const DICTIONARY = [
 	"the", "be", "to", "of", "and", "a", "in", "that", "have", "I", "it",
 	"for", "not", "on", "with", "he", "as", "you", "do", "at", "this", "but",
 	"his", "by", "from", "they", "we", "say", "her", "she", "or", "an", "will",
@@ -18,12 +25,30 @@ const dictionary = [
 	"these", "give", "day", "most", "us"
 ];
 
+////////////////
+// COMPONENTS //
+////////////////
+
+// Word component (each individual word in the TypePanel)
+const Word = props => {
+	const { text, completed, correct } = props.word;
+	const { running } = props;
+
+	let class_text = "";
+	if(completed && correct) class_text = "correct";
+	if(completed && !correct) class_text = "incorrect";
+	if(running && (props.word === props.currentWord)) class_text = "current_word";
+
+	return <span className={class_text}>{text}</span>;
+}
+
+// Type Panel Component
 class TypePanel extends Component {
 
 	constructor(props){
 		super(props);
 		this.state = {
-			word_bank: dictionary.map(word => ({text: word, completed: false, correct: false})),
+			word_bank: DICTIONARY.map(word => ({text: word, completed: false, correct: false})),
 			wpm: 0,
 			timer: 0,
 			timer_id: 0,
@@ -33,31 +58,35 @@ class TypePanel extends Component {
 		this.textInput = React.createRef();
 	}
 
-	get current_word(){
-		return this.state.word_bank.find(word => !word.completed);
-	};
-
 	startGame = () => {
 		// Don't do anything if game is already running
-		if(this.state.running) return;
-
-		// Focus input field
-		setTimeout(() => this.textInput.current.focus(), 30);	
+		if(this.state.running) return;	
 
 		// Every second update the timer and WPM counter
-		const id = setInterval(() => {	
+		const id = setInterval(() => {
 			let next_timer = this.state.timer + 1;
 			let next_wpm = this.state.word_bank.filter(w => w.correct).length / (next_timer / 60);
+			if(GAME_DURATION - next_timer === 0) this.stopGame();
 			this.setState({
 				timer: next_timer,
 				wpm: Math.floor(next_wpm)
 			});
 		}, 1000);
 
-		// Store timer ID and enable `running` flag
+		// Reset word bank before starting again
+		let reset_word_bank = this.state.word_bank.map(word => {
+			word.completed = false;
+			word.correct = false;
+			return word;
+		});
+
+		// Store timer ID, enable `running` flag, reset wpm
 		this.setState({
+			word_bank: reset_word_bank,
+			timer: 0,
 			timer_id: id,
-			running: true
+			running: true,
+			wpm: 0
 		});
 	}
 
@@ -65,23 +94,27 @@ class TypePanel extends Component {
 		// Don't do anything if game isn't running
 		if(!this.state.running) return;
 
+		// Lose focus on input
+		this.textInput.current.blur();
+
 		// Stop timer with stored timer ID
-		clearInterval(this.state.timer_id);
+		clearInterval(this.state.timer_id);	
 
 		// Reset state
 		this.setState({
-			timer: 0,
 			timer_id: 0,
-			running: false
+			running: false,
+			input_val: ""
 		});
 	}
 
-	// Handle input field updates
+	// Handle input changes
 	handleChange = e => {
+		if(!this.state.running) this.startGame();
 		this.setState({input_val: e.target.value.trim()});
 	}
 
-	// Listen for specific hot keys in input field (space, enter)
+	// Listen for specific hotkeys in input field (space, enter)
 	handleKeyDown = e => {
 		if(e.keyCode === 32 || e.keyCode === 13){
 			this.checkWordCorrectness(this.state.input_val);	
@@ -103,39 +136,28 @@ class TypePanel extends Component {
 	render() {
 
 		const { word_bank, wpm, timer, running, input_val } = this.state;
-		const { current_word, textInput, startGame, stopGame, handleChange, handleKeyDown } = this;
+		const { textInput, handleChange, handleKeyDown } = this;
+		const current_word = this.state.word_bank.find(word => !word.completed);
 
 		return (
 			<div className="TypePanel">
 				<div className="word-box">
-					{
-						word_bank.map(word => {
-							const { completed, correct } = word;
-							let class_text = "";
-							if(completed && correct) class_text = "correct";
-							if(completed && !correct) class_text = "incorrect";
-							if(word === current_word) class_text = "current_word";
-
-							return <span className={class_text} key={word.text}>{word.text}</span>;
-						})
-					}
+				{word_bank.map(word => (
+					<Word key={word.text} running={running} word={word} currentWord={current_word} />
+				))}
 				</div>
 				<input
 					type="text"
 					ref={textInput}
 					onChange={e => handleChange(e)}
-					onKeyDown={e => handleKeyDown(e)}
-					disabled={!running}
+					onKeyDown={e => handleKeyDown(e)}	
 					value={input_val}
+					autoFocus={true}
 				/>
 				<section>
-					<div className="controls">
-						<button onClick={startGame}>Start</button>
-						<button onClick={stopGame}>Stop</button>
-					</div>
 					<div className="stats">
 						<p className="wpm">WPM: {wpm}</p>
-						<p className="timer">{secToTime(timer)}</p>
+						<p className="timer">{secToTime(GAME_DURATION - timer)}</p>
 					</div>
 				</section>
 			</div>
