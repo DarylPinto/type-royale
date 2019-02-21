@@ -1,0 +1,49 @@
+.TypePanel
+	color: #333
+	.word-box
+		width: 100%
+		font-size: 24px
+		span
+			display: inline-block
+			margin-right: 30px
+			&.correct
+				color: green
+			&.incorrect
+				color: red 
+			&.current_word
+				background-color: #EDEDED
+	input
+		display: block
+		width: 100%
+		font-size: 24px
+		// height: 30px
+		padding: 5px 10px
+		margin-top: 20px
+		border-radius: 3px
+		border: 1px solid #CCC
+		box-sizing: border-box
+		outline: 0
+		transition: .2s
+		&:focus
+			border-color: #999
+	
+	section
+		display: flex
+		justify-content: space-between
+		align-items: center
+		margin-top: 5px
+
+	.controls, .stats
+		display: flex
+		button
+			height: 30px
+			margin-right: 10px
+			font-size: 14px	
+		p
+			margin-left: 20px
+		.timer
+			display: inline-block
+			min-width: 40px
+			margin-right: -5px
+
+	
