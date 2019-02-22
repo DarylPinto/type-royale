@@ -36,8 +36,8 @@ const Word = props => {
 
 	let class_text = "";
 	if(completed && correct) class_text = "correct";
-	if(completed && !correct) class_text = "incorrect";
-	if(running && (props.word === props.currentWord)) class_text = "current_word";
+	else if(completed && !correct) class_text = "incorrect";
+	else if(running && (props.word === props.currentWord)) class_text = "current_word";
 
 	return <span className={class_text}>{text}</span>;
 }
@@ -53,9 +53,14 @@ class TypePanel extends Component {
 			timer: 0,
 			timer_id: 0,
 			running: false,
-			input_val: ""
+			input_val: "",
+			wpm_highlighted: false
 		}
 		this.textInput = React.createRef();
+	}
+
+	get all_words_completed(){
+		return this.state.word_bank.filter(w => !w.completed).length === 0;
 	}
 
 	startGame = () => {
@@ -64,9 +69,14 @@ class TypePanel extends Component {
 
 		// Every second update the timer and WPM counter
 		const id = setInterval(() => {
-			let next_timer = this.state.timer + 1;
-			let next_wpm = this.state.word_bank.filter(w => w.correct).length / (next_timer / 60);
-			if(GAME_DURATION - next_timer === 0) this.stopGame();
+			const next_timer = this.state.timer + 1;
+			const next_wpm = this.state.word_bank.filter(w => w.correct).length / (next_timer / 60);
+
+			const time_up = GAME_DURATION - next_timer === 0;
+
+			// Game end conditions
+			if(time_up || this.all_words_completed) this.stopGame();
+
 			this.setState({
 				timer: next_timer,
 				wpm: Math.floor(next_wpm)
@@ -86,7 +96,8 @@ class TypePanel extends Component {
 			timer: 0,
 			timer_id: id,
 			running: true,
-			wpm: 0
+			wpm: 0,
+			wpm_highlighted: false
 		});
 	}
 
@@ -104,7 +115,8 @@ class TypePanel extends Component {
 		this.setState({
 			timer_id: 0,
 			running: false,
-			input_val: ""
+			input_val: "",
+			wpm_highlighted: true
 		});
 	}
 
@@ -116,7 +128,9 @@ class TypePanel extends Component {
 
 	// Listen for specific hotkeys in input field (space, enter)
 	handleKeyDown = e => {
-		if(e.keyCode === 32 || e.keyCode === 13){
+		if(this.all_words_completed) return;
+
+		else if(e.keyCode === 32 || e.keyCode === 13){
 			this.checkWordCorrectness(this.state.input_val);	
 			this.setState({input_val: ""});
 		}
@@ -135,7 +149,7 @@ class TypePanel extends Component {
 
 	render() {
 
-		const { word_bank, wpm, timer, running, input_val } = this.state;
+		const { word_bank, wpm, timer, running, input_val, wpm_highlighted } = this.state;
 		const { textInput, handleChange, handleKeyDown } = this;
 		const current_word = this.state.word_bank.find(word => !word.completed);
 
@@ -150,13 +164,13 @@ class TypePanel extends Component {
 					type="text"
 					ref={textInput}
 					onChange={e => handleChange(e)}
-					onKeyDown={e => handleKeyDown(e)}	
+					onKeyDown={e => handleKeyDown(e)}
 					value={input_val}
 					autoFocus={true}
 				/>
 				<section>
 					<div className="stats">
-						<p className="wpm">WPM: {wpm}</p>
+						<p className={wpm_highlighted ? "wpm highlighted" : "wpm"}>WPM: {wpm}</p>
 						<p className="timer">{secToTime(GAME_DURATION - timer)}</p>
 					</div>
 				</section>
